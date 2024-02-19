@@ -1,5 +1,6 @@
 #!/bin/bash
-VERSION="3.5.7"
+VERSION="3.5.21.16"
+DSOVERSION="3.5.21.12"
 if test $# != 1;then
         echo "Usage: $0 dir"
         exit 1;
@@ -12,15 +13,47 @@ fi
 if test `arch` = "x86_64"; then
         ARCH="$ARCH-x64"
 fi
+#stop httpd nginx
+service httpd stop 2&> /dev/null
+service nginx stop 2&> /dev/null
+chkconfig --level 2345 httpd off 2&> /dev/null
+chkconfig --level 2345 nginx off 2&> /dev/null
+#yum install
+yum -y install libjpeg-turbo libtiff libpng unzip
+#kangle install
 URL="http://github.itzmx.com/1265578519/kangle/master/ent/kangle-ent-$VERSION$ARCH.tar.gz"
 wget $URL -O kangle.tar.gz
 tar xzf kangle.tar.gz
 cd kangle
 $PREFIX/bin/kangle -q
-sleep 3
 killall -9 kangle
 sleep 3
 mkdir -p $PREFIX
-yum -y install wget;wget http://github.itzmx.com/1265578519/kangle/master/ent/license/Ultimate/license.txt -O $PREFIX/license.txt
+wget http://github.itzmx.com/1265578519/kangle/master/ent/license/Ultimate/license.txt -O $PREFIX/license.txt
 ./install.sh $PREFIX
+$PREFIX/bin/kangle
+echo "$PREFIX/bin/kangle" >> /etc/rc.d/rc.local
+chmod +x /etc/rc.d/rc.local
+/sbin/iptables -I INPUT -p tcp --dport 80 -j ACCEPT
+/sbin/iptables -I INPUT -p tcp --dport 443 -j ACCEPT
+/sbin/iptables -I INPUT -p tcp --dport 3311 -j ACCEPT
+/sbin/iptables -I INPUT -p tcp --dport 3312 -j ACCEPT
+/sbin/iptables -I INPUT -p tcp --dport 3313 -j ACCEPT
+/sbin/iptables -I INPUT -p tcp --dport 21 -j ACCEPT
+/etc/rc.d/init.d/iptables save
+service ip6tables stop 2&> /dev/null
+chkconfig ip6tables off 2&> /dev/null
+systemctl stop firewalld 2&> /dev/null
+systemctl disable firewalld 2&> /dev/null
+rm -rf $PREFIX/www/index.html
+wget http://github.itzmx.com/1265578519/kangle/master/easypanel/index.html -O $PREFIX/www/index.html
+$PREFIX/bin/kangle -q
+$PREFIX/bin/kangle -z /var/cache/kangle
+cd ..
+#dso install
+wget http://github.itzmx.com/1265578519/kangle/master/dso/kangle-dso-$DSOVERSION.zip -O kangle-dso.zip
+unzip -o kangle-dso.zip
+cd dso
+\cp -rf bin $PREFIX
+\cp -rf ext $PREFIX
 $PREFIX/bin/kangle
